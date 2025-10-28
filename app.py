@@ -1,12 +1,11 @@
 import streamlit as st
 import calendar
 import datetime
-import pandas as pd
 
 # --- Seiteneinstellungen ---
 st.set_page_config(page_title="Kalender", layout="centered")
 
-st.title("Mein Kalender (Grundgerüst)")
+st.title("📅 Mein Kalender (Grundgerüst)")
 
 # --- Auswahl Monat und Jahr ---
 today = datetime.date.today()
@@ -19,44 +18,45 @@ monat = st.selectbox(
 )
 
 # --- Kalenderdaten generieren ---
-kalender = calendar.Calendar(firstweekday=0)
-tage = list(kalender.itermonthdates(jahr, monat))
+cal = calendar.Calendar(firstweekday=0)  # Montag als erster Tag
+month_days = [day for day in cal.itermonthdates(jahr, monat)]
 
-# --- DataFrame für Anzeige ---
-df = pd.DataFrame({
-    "Datum": tage,
-    "Wochentag": [calendar.day_name[d.weekday()] for d in tage]
-})
-df = df[df["Datum"].dt.month == monat]  # Nur aktueller Monat
+# --- Wochenweise gruppieren ---
+weeks = []
+week = []
+for day in month_days:
+    if len(week) == 7:
+        weeks.append(week)
+        week = []
+    week.append(day)
+if week:
+    weeks.append(week)
 
-# --- Darstellung ---
+# --- Überschrift ---
 st.subheader(f"{calendar.month_name[monat]} {jahr}")
 
-# Raster (7 Spalten, Wochenweise)
+# --- Wochentagsnamen ---
+weekday_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 cols = st.columns(7)
-wochentage = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-for i, wtag in enumerate(wochentage):
-    cols[i].markdown(f"**{wtag}**")
+for i, wname in enumerate(weekday_names):
+    cols[i].markdown(f"**{wname}**")
 
-# Leeres Raster vorbereiten
-for i, tag in enumerate(tage):
-    col = cols[tag.weekday()]  # Spalte basierend auf Wochentag
-    if tag.month == monat:
-        if st.session_state.get("selected_date") == tag:
-            button_label = f"✅ {tag.day}"
+# --- Sitzungsstatus initialisieren ---
+if "selected_date" not in st.session_state:
+    st.session_state["selected_date"] = None
+
+# --- Kalenderanzeige ---
+for week in weeks:
+    cols = st.columns(7)
+    for i, day in enumerate(week):
+        if day.month == monat:
+            label = f"✅ {day.day}" if st.session_state["selected_date"] == day else str(day.day)
+            if cols[i].button(label, key=f"{day}"):
+                st.session_state["selected_date"] = day
         else:
-            button_label = str(tag.day)
-
-        if col.button(button_label, key=str(tag)):
-            st.session_state["selected_date"] = tag
-    else:
-        col.write(" ")
+            cols[i].write(" ")
 
 # --- Anzeige ausgewähltes Datum ---
-if "selected_date" in st.session_state:
+if st.session_state["selected_date"]:
     st.info(f"Ausgewähltes Datum: {st.session_state['selected_date'].strftime('%d.%m.%Y')}")
-
-    # Platzhalter für zukünftige Features
     st.write("📝 Hier kannst du später Termine oder Notizen hinzufügen.")
-
-
